@@ -12,9 +12,24 @@ wee_extension --install weewx-meteotemplate.tgz
 
 [StdRESTful]
     [[Meteotemplate]]
-        host = HOSTNAME
+        host = INSERT_HOSTNAME_HERE
+        password = INSERT_PASSWORD_HERE
 
 3) restart weewx:
 
 sudo /etc/init.d/weewx stop
 sudo /etc/init.d/weewx start
+
+
+===============================================================================
+Options
+
+The default configuration assumes that the meteotemplate URL is:
+
+  http://host/weather/update/meteobridge.php
+
+To specify a different URL, use the server_url parameter:
+
+[StdRESTful]
+    [[Meteotemplate]]
+        server_url = https://example.com/path/to/upload.php
