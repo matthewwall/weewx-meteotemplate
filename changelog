@@ -1,2 +1,5 @@
+0.2 05jan2017
+* update to work with the update.php api instead of meteobridge.php api
+
 0.1 23dec2016
 * initial release

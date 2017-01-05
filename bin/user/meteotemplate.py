@@ -8,13 +8,50 @@ Meteotemplate is a weather website system written in PHP by Jachym.
 http://meteotemplate.com
 
 This is a weewx extension that uploads data to a Meteotemplate server.  It uses
-the API from the meteotemplate.php script, which is deprecated:
-
-http://www.example.com/weather/update/meteobridge.php?t=[th0temp-avg5]&h=[th0hum-avg5]&p=0&d=[th0dew-avg5]&w=[wind0wind-avg5]&g=[wind0wind-max5]&b=[wind0dir-avg5]&rr=[rain0rate-act]&r=[rain0total-sumday]&tmax=[th0temp-max5]&tmin=[th0temp-min5]&year=[YYYY]&month=[MM]&day=[DD]&hour=[hh]&minute=[mm]&seconds=[ss]&pass=posting-password
-
-as explained in this posting:
+the API described in this posting:
 
 http://www.wxforum.net/index.php?topic=31018.msg308692
+
+More specifically, this extension works with the following API specification:
+
+URL: http[s]://TEMPLATE_ROOT/plugins/api/update.php
+
+Parameters:
+  password - the "update password" in meteotemplate settings
+  DT - datetime as epoch
+  T - temperature
+  H - humidity
+  P - pressure
+  W - wind speed
+  G - wind gust
+  B - wind direction (0-359)
+  R - daily cumulative rain (since midnight)
+  RR - current rain rate (per hour)
+  S - solar radiation
+
+  uT - temperature units (C | F)
+  uW - wind speed units (kph | mps | mph | kt)
+  uR - precipitation units (mm | in)
+  uP - pressure units (hpa | mbar | inhg | mmhg)
+
+If no units are specified, the following units are assumed:
+  temperature: degrees Celsius
+  pressure: hPa
+  precipitation: mm
+  wind speed: km/h
+
+A parameter is ignored if:
+ - it is not provided in the URL
+ - it is blank (e.g., T=&H=&P=)
+ - is set to null (e.g., T=null&H=null)
+
+Each request must contain password, DT, and at least one parameter.
+
+Parameter labels are case-sensitive.
+
+Data can be sent at any interval.  If the interval is shorter than 5 minutes,
+data will be cached then aggregated.  The meteotemplate database is updated
+every 5 minutes.
 """
 
 import Queue
@@ -30,7 +67,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay
 
-VERSION = "0.1rc1"
+VERSION = "0.2"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -75,7 +112,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
         host = site_dict.pop('host', 'localhost')
         if site_dict.get('server_url', None) is None:
-            site_dict['server_url'] = 'http://%s/weather/update/meteobridge.php' % host
+            site_dict['server_url'] = 'http://%s/plugins/api/update.php' % host
 
         try:
             _mgr_dict = weewx.manager.get_manager_dict_from_config(
@@ -128,29 +165,25 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         self.post_with_retries(req)
 
     FIELD_MAP = {
-        't': 'outTemp', # degree_C
-        'h': 'outHumidity', # percent
-        'p': 'barometer', # mbar
-        'd': 'dewpoint', # degree_C
-        'w': 'windSpeed', # meter_per_second
-        'g': 'windGust', # meter_per_second
-        'b': 'windDir', # degree_compass
-        'rr': 'rainRate', # mm/hr
-        'r': 'dayRain', # mm
-        'tmax': 'temp_max', # degree_C
-        'tmin': 'temp_min'} # degree_C
+        'T': 'outTemp', # degree_C
+        'H': 'outHumidity', # percent
+        'P': 'barometer', # mbar
+        'W': 'windSpeed', # kph
+        'G': 'windGust', # kph
+        'B': 'windDir', # degree_compass
+        'RR': 'rainRate', # mm/hr
+        'R': 'dayRain', # mm
+        'S': 'radiation'}
 
     def get_url(self, record):
-        record = weewx.units.to_std_system(record, weewx.METRICWX)
-        ts = time.gmtime(record['dateTime'])
+        record = weewx.units.to_std_system(record, weewx.METRIC)
+        if 'dayRain' in record:
+            record['dayRain'] *= 10.0 # convert to mm
+        if 'rainRate' in record:
+            record['rainRate'] *= 10.0 # convert to mm/hr
         parts = dict()
-        parts['pass'] = self.password
-        parts['YYYY'] = ts.tm_year
-        parts['MM'] = ts.tm_mon
-        parts['DD'] = ts.tm_mday
-        parts['hh'] = ts.tm_hour
-        parts['mm'] = ts.tm_min
-        parts['ss'] = ts.tm_sec
+        parts['password'] = self.password
+        parts['DT'] = record['dateTime']
         for k in self.FIELD_MAP:
             if (self.FIELD_MAP[k] in record and
                 record[self.FIELD_MAP[k]] is not None):
@@ -164,7 +197,9 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 if __name__ == "__main__":
     weewx.debug = 2
     queue = Queue.Queue()
-    t = MeteotemplateThread(queue, manager_dict=None, password='abc123')
+    t = MeteotemplateThread(
+        queue, manager_dict=None, password='abc123',
+        server_url='http://localhost/plugins/api/update.php')
     t.process_record({'dateTime': int(time.time() + 0.5),
                       'usUnits': weewx.US,
                       'outTemp': 32.5,
