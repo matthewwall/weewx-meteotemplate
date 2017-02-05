@@ -5,18 +5,22 @@ Distributed under terms of the GPLv3
 ===============================================================================
 Installation
 
-1) run the installer:
+1) download the driver
+
+wget -O weewx-meteotemplate.zip https://github.com/matthewwall/weewx-meteotemplate/archive/master.zip
+
+2) run the installer:
 
 wee_extension --install weewx-meteotemplate.tgz
 
-2) enter parameters in weewx.conf:
+3) enter parameters in weewx.conf:
 
 [StdRESTful]
     [[Meteotemplate]]
         host = INSERT_HOSTNAME_HERE
         password = INSERT_PASSWORD_HERE
 
-3) restart weewx:
+4) restart weewx:
 
 sudo /etc/init.d/weewx stop
 sudo /etc/init.d/weewx start
