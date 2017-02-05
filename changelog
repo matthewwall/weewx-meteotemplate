@@ -1,3 +1,7 @@
+0.3 05feb2017
+* match specification of 05feb2017
+  http://www.meteotemplate.com/web/wiki/wikiAPI.php
+
 0.2 05jan2017
 * update to work with the update.php api instead of meteobridge.php api
 

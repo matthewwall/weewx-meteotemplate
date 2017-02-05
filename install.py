@@ -1,5 +1,6 @@
-# installer for meteotemplate
-# Copyright 2016 Matthew Wall
+# installer for meteotemplate extension
+# Copyright 2016-2017 Matthew Wall
+# Distributed under terms of the GPLv3
 
 from setup import ExtensionInstaller
 
@@ -9,7 +10,7 @@ def loader():
 class MeteotemplateInstaller(ExtensionInstaller):
     def __init__(self):
         super(MeteotemplateInstaller, self).__init__(
-            version="0.2",
+            version="0.3",
             name='meteotemplate',
             description='Upload weather data to Meteotemplate.',
             author="Matthew Wall",
