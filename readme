@@ -27,10 +27,10 @@ Options
 
 The default configuration assumes that the meteotemplate URL is:
 
-  http://host/weather/update/meteobridge.php
+  http://host/api.php
 
 To specify a different URL, use the server_url parameter:
 
 [StdRESTful]
     [[Meteotemplate]]
-        server_url = https://example.com/path/to/upload.php
+        server_url = https://example.com/path/to/api.php
