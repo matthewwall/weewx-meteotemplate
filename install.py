@@ -19,7 +19,7 @@ class MeteotemplateInstaller(ExtensionInstaller):
             config={
                 'StdRESTful': {
                     'Meteotemplate': {
-                        'host': 'INSERT_HOST_HERE',
+                        'server_url': 'INSERT_SERVER_URL_HERE',
                         'password': 'INSERT_PASSWORD_HERE'}}},
             files=[('bin/user', ['bin/user/meteotemplate.py'])]
             )

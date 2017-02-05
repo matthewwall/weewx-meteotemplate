@@ -17,7 +17,7 @@ wee_extension --install weewx-meteotemplate.tgz
 
 [StdRESTful]
     [[Meteotemplate]]
-        host = INSERT_HOSTNAME_HERE
+        server_url = INSERT_SERVER_URL_HERE
         password = INSERT_PASSWORD_HERE
 
 4) restart weewx:
@@ -29,12 +29,11 @@ sudo /etc/init.d/weewx start
 ===============================================================================
 Options
 
-The default configuration assumes that the meteotemplate URL is:
+The server_url is the full path to the meteotemplate api script.  It should
+be something like this:
 
-  http://host/api.php
+  https://localhost/template/api.php
 
-To specify a different URL, use the server_url parameter:
+If no server_url is specified, the default value is:
 
-[StdRESTful]
-    [[Meteotemplate]]
-        server_url = https://example.com/path/to/api.php
+  http://localhost/api.php
