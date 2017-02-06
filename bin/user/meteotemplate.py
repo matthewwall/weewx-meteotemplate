@@ -60,9 +60,9 @@ from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay
 VERSION = "0.4"
 
 REQUIRED_WEEWX = "3.5.0"
-#if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
-#    raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
-#                                   % (REQUIRED_WEEWX, weewx.__version__))
+if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
+    raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
+                                   % (REQUIRED_WEEWX, weewx.__version__))
 
 def logmsg(level, msg):
     syslog.syslog(level, 'restx: Meteotemplate: %s' % msg)
