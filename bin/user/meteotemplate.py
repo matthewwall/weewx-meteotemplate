@@ -159,18 +159,18 @@ class MeteotemplateThread(weewx.restx.RESTThread):
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
 
     FIELD_MAP = {
-        'T': 'outTemp', # degree_C
-        'H': 'outHumidity', # percent
-        'P': 'barometer', # mbar
-        'W': 'windSpeed', # km/h
-        'G': 'windGust', # km/h
-        'B': 'windDir', # degree_compass
-        'RR': 'rainRate', # mm/h
-        'R': 'dayRain', # mm
-        'S': 'radiation', # W/m^2
-        'UV': 'UV',
-        'TIN': 'inTemp', # degree_C
-        'HIN': 'inHumidity'}
+        'T': ('outTemp', 2), # degree_C
+        'H': ('outHumidity', 1), # percent
+        'P': ('barometer', 3), # mbar
+        'W': ('windSpeed', 2), # km/h
+        'G': ('windGust', 2), # km/h
+        'B': ('windDir', 0), # degree_compass
+        'RR': ('rainRate', 3), # mm/h
+        'R': ('dayRain', 3), # mm
+        'S': ('radiation', 3), # W/m^2
+        'UV': ('UV', 0),
+        'TIN': ('inTemp', 2), # degree_C
+        'HIN': ('inHumidity', 1)}
 
     def get_url(self, record):
         record = weewx.units.to_std_system(record, weewx.METRIC)
@@ -183,15 +183,17 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         parts['U'] = record['dateTime']
         parts['SW'] = "weewx-%s" % weewx.__version__
         for k in self.FIELD_MAP:
-            if (self.FIELD_MAP[k] in record and
-                record[self.FIELD_MAP[k]] is not None):
-                parts[k] = self._fmt(record.get(self.FIELD_MAP[k]))
+            if (self.FIELD_MAP[k][0] in record and
+                record[self.FIELD_MAP[k][0]] is not None):
+                parts[k] = self._fmt(record.get(self.FIELD_MAP[k][0]),
+                                     self.FIELD_MAP[k][1])
         return "%s?%s" % (self.server_url, urllib.urlencode(parts))
 
     @staticmethod
-    def _fmt(x):
+    def _fmt(x, places=3):
+        fmt = "%%.%df" % places
         try:
-            return "%.3f" % x
+            return fmt % x
         except TypeError:
             pass
         return x
