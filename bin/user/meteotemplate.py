@@ -78,6 +78,8 @@ def logerr(msg):
 
 
 class Meteotemplate(weewx.restx.StdRESTbase):
+    DEFAULT_URL = 'http://localhost/template/api.php'
+
     def __init__(self, engine, cfg_dict):
         """This service recognizes standard restful options plus the following:
 
@@ -85,10 +87,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
         password: the shared key for uploading data
 
-        host: name or ip address of server hosting meteotemplate
-
         server_url: full URL to the meteotemplate ingest script
-        Default is None
         """
         super(Meteotemplate, self).__init__(engine, cfg_dict)        
         loginf("service version is %s" % VERSION)
@@ -100,9 +99,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
             logerr("Data will not be uploaded: Missing option %s" % e)
             return
 
-        host = site_dict.pop('host', 'localhost')
-        if site_dict.get('server_url', None) is None:
-            site_dict['server_url'] = 'http://%s/template/api.php' % host
+        site_dict.get('server_url', Meteotemplate.DEFAULT_URL)
 
         try:
             _mgr_dict = weewx.manager.get_manager_dict_from_config(
@@ -198,8 +195,6 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 if __name__ == "__main__":
     import optparse
 
-    DEFAULT_URL = 'http://localhost/template/api.php'
-
     usage = """%prog [--url URL] [--pw password] [--version] [--help]"""
 
     syslog.openlog('meteotemplate', syslog.LOG_PID | syslog.LOG_CONS)
@@ -207,7 +202,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--version', dest='version', action='store_true',
                       help='display driver version')
-    parser.add_option('--url', dest='url', default=DEFAULT_URL,
+    parser.add_option('--url', dest='url', default=Meteotemplate.DEFAULT_URL,
                       help='full URL to the server script')
     parser.add_option('--pw', dest='pw', help='upload password')
     (options, args) = parser.parse_args()
