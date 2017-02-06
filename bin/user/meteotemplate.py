@@ -57,7 +57,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay
 
-VERSION = "0.3"
+VERSION = "0.4"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -102,7 +102,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
         host = site_dict.pop('host', 'localhost')
         if site_dict.get('server_url', None) is None:
-            site_dict['server_url'] = 'http://%s/api.php' % host
+            site_dict['server_url'] = 'http://%s/template/api.php' % host
 
         try:
             _mgr_dict = weewx.manager.get_manager_dict_from_config(
@@ -154,6 +154,11 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
         self.post_with_retries(req)
 
+    def check_response(self, response):
+        txt = response.read()
+        if txt.find('Success') < 0:
+            raise weewx.restx.FailedPost("Server returned '%s'" % txt)
+
     FIELD_MAP = {
         'T': 'outTemp', # degree_C
         'H': 'outHumidity', # percent
@@ -177,6 +182,7 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         parts = dict()
         parts['PASS'] = self.password
         parts['U'] = record['dateTime']
+        parts['SW'] = "weewx/%s" % weewx.__version__
         for k in self.FIELD_MAP:
             if (self.FIELD_MAP[k] in record and
                 record[self.FIELD_MAP[k]] is not None):
@@ -184,15 +190,35 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         return "%s?%s" % (self.server_url, urllib.urlencode(parts))
 
 
-# Use this hook to test the uploader:
-#   PYTHONPATH=bin python bin/user/meteotemplate.py
+# Do direct testing of this extension like this:
+#   python WEEWX_BINDIR/user/meteotemplate.py
 
 if __name__ == "__main__":
+    import optparse
+    import os
+    import sys
+
+    # assume that this is install in the weewx user directory.
+    DIR = os.path.abspath(os.path.dirname(__file__))
+    sys.path.insert(0, os.path.join(DIR, '..'))
+
+    DEFAULT_URL = 'http://localhost/template/api.php'
+
+    usage = """%prog [--url URL] [--pass password] [--version] [--help]"""
+
+    syslog.openlog('meteotemplate', syslog.LOG_PID | syslog.LOG_CONS)
+    syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_INFO))
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--version', dest='version', action='store_true',
+                      help='display driver version')
+    parser.add_option('--url', dest='url', default=DEFAULT_URL,
+                      help='full URL to the server script')
+    parser.add_option('--pw', dest='pw', help='upload password')
+
     weewx.debug = 2
     queue = Queue.Queue()
     t = MeteotemplateThread(
-        queue, manager_dict=None, password='abc123',
-        server_url='http://localhost/api.php')
+        queue, manager_dict=None, password=options.pw, server_url=options.url)
     t.process_record({'dateTime': int(time.time() + 0.5),
                       'usUnits': weewx.US,
                       'outTemp': 32.5,

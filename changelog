@@ -1,3 +1,7 @@
+0.4 06feb2017
+* recognize server responses
+* send software signature in URL as well as the http headers
+
 0.3 05feb2017
 * match specification of 05feb2017
   http://www.meteotemplate.com/web/wiki/wikiAPI.php

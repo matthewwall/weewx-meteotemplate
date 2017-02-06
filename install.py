@@ -10,7 +10,7 @@ def loader():
 class MeteotemplateInstaller(ExtensionInstaller):
     def __init__(self):
         super(MeteotemplateInstaller, self).__init__(
-            version="0.3",
+            version="0.4",
             name='meteotemplate',
             description='Upload weather data to Meteotemplate.',
             author="Matthew Wall",
