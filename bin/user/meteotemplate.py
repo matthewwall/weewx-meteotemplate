@@ -81,11 +81,11 @@ class Meteotemplate(weewx.restx.StdRESTbase):
     def __init__(self, engine, cfg_dict):
         """This service recognizes standard restful options plus the following:
 
-        Required parameters:
+        Parameters:
+
+        password: the shared key for uploading data
 
         host: name or ip address of server hosting meteotemplate
-
-        Optional parameters:
 
         server_url: full URL to the meteotemplate ingest script
         Default is None
