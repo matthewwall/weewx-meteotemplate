@@ -60,9 +60,9 @@ from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay
 VERSION = "0.4"
 
 REQUIRED_WEEWX = "3.5.0"
-if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
-    raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
-                                   % (REQUIRED_WEEWX, weewx.__version__))
+#if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
+#    raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
+#                                   % (REQUIRED_WEEWX, weewx.__version__))
 
 def logmsg(level, msg):
     syslog.syslog(level, 'restx: Meteotemplate: %s' % msg)
@@ -156,7 +156,9 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 
     def check_response(self, response):
         txt = response.read()
-        if txt.find('Success') < 0:
+        if txt == 'Success':
+            logdbg("upload complete: %s" % txt)
+        else:
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
 
     FIELD_MAP = {
@@ -191,30 +193,30 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 
 
 # Do direct testing of this extension like this:
-#   python WEEWX_BINDIR/user/meteotemplate.py
+#   PYTHONPATH=WEEWX_BINDIR python WEEWX_BINDIR/user/meteotemplate.py
 
 if __name__ == "__main__":
     import optparse
-    import os
-    import sys
-
-    # assume that this is install in the weewx user directory.
-    DIR = os.path.abspath(os.path.dirname(__file__))
-    sys.path.insert(0, os.path.join(DIR, '..'))
 
     DEFAULT_URL = 'http://localhost/template/api.php'
 
-    usage = """%prog [--url URL] [--pass password] [--version] [--help]"""
+    usage = """%prog [--url URL] [--pw password] [--version] [--help]"""
 
     syslog.openlog('meteotemplate', syslog.LOG_PID | syslog.LOG_CONS)
-    syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_INFO))
+    syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_DEBUG))
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--version', dest='version', action='store_true',
                       help='display driver version')
     parser.add_option('--url', dest='url', default=DEFAULT_URL,
                       help='full URL to the server script')
     parser.add_option('--pw', dest='pw', help='upload password')
+    (options, args) = parser.parse_args()
 
+    if options.version:
+        print "meteotemplate uploader version %s" % VERSION
+        exit(0)
+
+    print "uploading to %s" % options.url
     weewx.debug = 2
     queue = Queue.Queue()
     t = MeteotemplateThread(

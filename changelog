@@ -1,4 +1,5 @@
 0.4 06feb2017
+* provide more feedback when testing
 * recognize server responses
 * send software signature in URL as well as the http headers
 
