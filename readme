@@ -33,7 +33,3 @@ The server_url is the full path to the meteotemplate api script.  It should
 be something like this:
 
   https://localhost/template/api.php
-
-If no server_url is specified, the default value is:
-
-  http://localhost/api.php
