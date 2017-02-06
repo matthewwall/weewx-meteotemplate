@@ -181,12 +181,20 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         parts = dict()
         parts['PASS'] = self.password
         parts['U'] = record['dateTime']
-        parts['SW'] = "weewx/%s" % weewx.__version__
+        parts['SW'] = "weewx-%s" % weewx.__version__
         for k in self.FIELD_MAP:
             if (self.FIELD_MAP[k] in record and
                 record[self.FIELD_MAP[k]] is not None):
-                parts[k] = record.get(self.FIELD_MAP[k])
+                parts[k] = self._fmt(record.get(self.FIELD_MAP[k]))
         return "%s?%s" % (self.server_url, urllib.urlencode(parts))
+
+    @staticmethod
+    def _fmt(x):
+        try:
+            return "%.3f" % x
+        except TypeError:
+            pass
+        return x
 
 
 # Do direct testing of this extension like this:
