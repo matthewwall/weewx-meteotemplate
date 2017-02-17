@@ -11,7 +11,7 @@ wget -O weewx-meteotemplate.zip https://github.com/matthewwall/weewx-meteotempla
 
 2) run the installer:
 
-wee_extension --install weewx-meteotemplate.tgz
+wee_extension --install weewx-meteotemplate.zip
 
 3) enter parameters in weewx.conf:
 
