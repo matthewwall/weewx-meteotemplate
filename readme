@@ -5,7 +5,7 @@ Distributed under terms of the GPLv3
 ===============================================================================
 Installation
 
-1) download the driver
+1) download the extension
 
 wget -O weewx-meteotemplate.zip https://github.com/matthewwall/weewx-meteotemplate/archive/master.zip
 
@@ -33,3 +33,6 @@ The server_url is the full path to the meteotemplate api script.  It should
 be something like this:
 
   https://localhost/template/api.php
+
+The password is the upload password, not the password used to administrate
+the meteotemplate installation.
