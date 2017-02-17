@@ -103,7 +103,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
         try:
             _mgr_dict = weewx.manager.get_manager_dict_from_config(
-                config_dict, 'wx_binding')
+                cfg_dict, 'wx_binding')
             site_dict['manager_dict'] = _mgr_dict
         except weewx.UnknownBinding:
             pass
