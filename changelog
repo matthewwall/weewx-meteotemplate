@@ -1,3 +1,6 @@
+0.5 25feb2017
+* added option for loop binding
+
 0.4 06feb2017
 * provide more feedback when testing
 * recognize server responses

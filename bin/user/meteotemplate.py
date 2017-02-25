@@ -57,7 +57,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay
 
-VERSION = "0.4"
+VERSION = "0.5"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -100,6 +100,7 @@ class Meteotemplate(weewx.restx.StdRESTbase):
             return
 
         site_dict.get('server_url', Meteotemplate.DEFAULT_URL)
+        binding = site_dict.pop('binding', 'archive').lower()
 
         try:
             _mgr_dict = weewx.manager.get_manager_dict_from_config(
@@ -116,10 +117,16 @@ class Meteotemplate(weewx.restx.StdRESTbase):
             return
 
         self._thread.start()
-        self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+        if binding = 'loop':
+            self.bind(weewx.NEW_LOOP_PACKET, self.handle_new_loop)
+        else:
+            self.bind(weewx.NEW_ARCHIVE_RECORD, self.handle_new_archive)
         loginf("Data will be uploaded to %s" % site_dict['server_url'])
 
-    def new_archive_record(self, event):
+    def handle_new_loop(self, event):
+        self._queue.put(event.packet)
+
+    def handle_new_archive(self, event):
         self._queue.put(event.record)
 
 
