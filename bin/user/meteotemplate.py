@@ -153,17 +153,16 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         if weewx.debug >= 2:
             logdbg('url: %s' % url)
         if self.skip_upload:
-            raise AbortedPost()
+            raise weewx.restx.AbortedPost()
         req = urllib2.Request(url)
         req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
         self.post_with_retries(req)
 
     def check_response(self, response):
         txt = response.read()
-        if txt == 'Success':
-            logdbg("upload complete: %s" % txt)
-        else:
+        if txt != 'Success':
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
+        logdbg("upload complete: %s" % txt)
 
     FIELD_MAP = {
         'T': ('outTemp', 2), # degree_C
