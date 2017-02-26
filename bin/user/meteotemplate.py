@@ -180,9 +180,9 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 
     def get_url(self, record):
         record = weewx.units.to_std_system(record, weewx.METRIC)
-        if 'dayRain' in record:
+        if 'dayRain' in record and record['dayRain'] is not None:
             record['dayRain'] *= 10.0 # convert to mm
-        if 'rainRate' in record:
+        if 'rainRate' in record and record['rainRate'] is not None:
             record['rainRate'] *= 10.0 # convert to mm/h
         parts = dict()
         parts['PASS'] = self.password
