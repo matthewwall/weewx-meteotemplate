@@ -57,7 +57,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay, list_as_string
 
-VERSION = "0.5"
+VERSION = "0.6"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -167,7 +167,8 @@ class MeteotemplateThread(weewx.restx.RESTThread):
     FIELD_MAP = {
         'T': ('outTemp', 2), # degree_C
         'H': ('outHumidity', 1), # percent
-        'P': ('barometer', 3), # mbar
+        'P': ('pressure', 3), # mbar
+        'SLP': ('barometer', 3), # mbar
         'W': ('windSpeed', 2), # km/h
         'G': ('windGust', 2), # km/h
         'B': ('windDir', 0), # degree_compass

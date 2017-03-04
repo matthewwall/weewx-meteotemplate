@@ -1,3 +1,6 @@
+0.6 04mar2017
+* support pressure or barometer in partial packets
+
 0.5 25feb2017
 * added option for loop binding
 
