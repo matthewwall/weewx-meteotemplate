@@ -12,6 +12,9 @@ the API described in the meteotemplate wiki:
 
 http://www.meteotemplate.com/web/wiki/wikiAPI.php
 
+The set of fields actually sent depends on the sensors available and the way
+the hardware sends data from those fields.
+
 More specifically, this extension works with the following API specification:
 
 URL: http[s]://TEMPLATE_ROOT/api.php
@@ -31,6 +34,7 @@ Parameters:
   UV - ultraviolet index
   TIN - indoor temperature (C)
   HIN - indoor humidity (%)
+  ...
 
 A parameter is ignored if:
  - it is not provided in the URL
@@ -42,6 +46,10 @@ Each request must contain PASS, U, and at least one parameter.
 Data can be sent at any interval.  If the interval is shorter than 5 minutes,
 data will be cached then aggregated.  The meteotemplate database is updated
 every 5 minutes.
+
+Battery status is handled properly for battery status fields in the default
+schema.  Battery voltages are not included (the meteotemplate API has no
+provision for battery voltage).
 """
 
 import Queue
@@ -57,7 +65,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay, list_as_string
 
-VERSION = "0.6"
+VERSION = "0.7"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -145,6 +153,8 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         self.server_url = server_url
         self.password = password
         self.skip_upload = to_bool(skip_upload)
+        self.field_map = self.create_default_field_map
+        # FIXME: make field map changes available via config file
 
     def process_record(self, record, dbm):
         if dbm:
@@ -164,21 +174,6 @@ class MeteotemplateThread(weewx.restx.RESTThread):
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
         logdbg("upload complete: %s" % txt)
 
-    FIELD_MAP = {
-        'T': ('outTemp', 2), # degree_C
-        'H': ('outHumidity', 1), # percent
-        'P': ('pressure', 3), # mbar
-        'SLP': ('barometer', 3), # mbar
-        'W': ('windSpeed', 2), # km/h
-        'G': ('windGust', 2), # km/h
-        'B': ('windDir', 0), # degree_compass
-        'RR': ('rainRate', 3), # mm/h
-        'R': ('dayRain', 3), # mm
-        'S': ('radiation', 3), # W/m^2
-        'UV': ('UV', 0),
-        'TIN': ('inTemp', 2), # degree_C
-        'HIN': ('inHumidity', 1)}
-
     def get_url(self, record):
         record = weewx.units.to_std_system(record, weewx.METRIC)
         if 'dayRain' in record and record['dayRain'] is not None:
@@ -189,11 +184,11 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         parts['PASS'] = self.password
         parts['U'] = record['dateTime']
         parts['SW'] = "weewx-%s" % weewx.__version__
-        for k in self.FIELD_MAP:
-            if (self.FIELD_MAP[k][0] in record and
-                record[self.FIELD_MAP[k][0]] is not None):
-                parts[k] = self._fmt(record.get(self.FIELD_MAP[k][0]),
-                                     self.FIELD_MAP[k][1])
+        for k in self.field_map:
+            if (self.field_map[k][0] in record and
+                record[self.field_map[k][0]] is not None):
+                parts[k] = self._fmt(record.get(self.field_map[k][0]),
+                                     self.field_map[k][1])
         return "%s?%s" % (self.server_url, urllib.urlencode(parts))
 
     @staticmethod
@@ -204,6 +199,49 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         except TypeError:
             pass
         return x
+
+    @staticmethod
+    def create_default_field_map():
+        fm = {
+            'T': ('outTemp', 2), # degree_C
+            'H': ('outHumidity', 1), # percent
+            'P': ('pressure', 3), # mbar
+            'SLP': ('barometer', 3), # mbar
+            'W': ('windSpeed', 2), # km/h
+            'G': ('windGust', 2), # km/h
+            'B': ('windDir', 0), # degree_compass
+            'RR': ('rainRate', 3), # mm/h
+            'R': ('dayRain', 3), # mm
+            'S': ('radiation', 3), # W/m^2
+            'UV': ('UV', 0),
+            'TIN': ('inTemp', 2), # degree_C
+            'HIN': ('inHumidity', 1), # percent
+            'SN': ('daySnow', 3), # mm
+            'SD': ('snowDepth', 3), # mm
+            'L': ('lightning', 0),
+            'NL': ('noise', 2)} # dB
+
+        for i in range(8):
+            fm['T%d' % i] = ('extraTemp%d' % i, 2) # degree_C
+            fm['H%d' % i] = ('extraHumid%d' % i, 1) # percent
+            fm['TS%d' % i] = ('soilTemp%d' % i, 2) # degree_C
+            fm['TSD%d' % i] = ('soilTempDepth%d' % i, 2) # cm
+            fm['LW%d' % i] = ('leafWet%d' % i, 1)
+            fm['LT%d' % i] = ('leafTemp%d' % i, 2) # degree_C
+            fm['SM%d' % i] = ('soilMoist%d' % i, 1)
+            fm['CO2_%d' % i] = ('co2_%d' % i, 3) # ppm
+            fm['NO2_%d' % i] = ('no2_%d' % i, 3) # ppm
+            fm['CO_%d' % i] = ('co_%d' % i, 3) # ppm
+            fm['SO2_%d' % i] = ('so2_%d' % i, 3) # ppb
+            fm['O3_%d' % i] = ('o3_%d' % i, 3) # ppb
+            fm['pp%d' % i] = ('pp%d' % i, 3) # ug/m^3
+
+        fm['TXBAT'] = ('txBatteryStatus', 0)
+        fm['WBAT'] = ('windBatteryStatus', 0)
+        fm['RBAT'] = ('rainBatteryStatus', 0)
+        fm['TBAT'] = ('outTempBatteryStatus', 0)
+        fm['TINBAT'] = ('inTempBatteryStatus', 0)
+        return fm
 
 
 # Do direct testing of this extension like this:
