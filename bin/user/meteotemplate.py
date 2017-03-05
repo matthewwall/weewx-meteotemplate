@@ -153,7 +153,7 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         self.server_url = server_url
         self.password = password
         self.skip_upload = to_bool(skip_upload)
-        self.field_map = self.create_default_field_map
+        self.field_map = self.create_default_field_map()
         # FIXME: make field map changes available via config file
 
     def process_record(self, record, dbm):
