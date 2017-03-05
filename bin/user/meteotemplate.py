@@ -221,7 +221,7 @@ class MeteotemplateThread(weewx.restx.RESTThread):
             'L': ('lightning', 0),
             'NL': ('noise', 2)} # dB
 
-        for i in range(8):
+        for i in range(1, 9):
             fm['T%d' % i] = ('extraTemp%d' % i, 2) # degree_C
             fm['H%d' % i] = ('extraHumid%d' % i, 1) # percent
             fm['TS%d' % i] = ('soilTemp%d' % i, 2) # degree_C
