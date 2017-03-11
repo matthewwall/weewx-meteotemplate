@@ -24,7 +24,7 @@ Parameters:
   U - datetime as epoch
   T - temperature (C)
   H - humidity (%)
-  P - pressure (mbar)
+  P - barometer (mbar)
   W - wind speed (km/h)
   G - wind gust (km/h)
   B - wind direction (0-359)
@@ -65,7 +65,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay, list_as_string
 
-VERSION = "0.7"
+VERSION = "0.8"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -205,8 +205,8 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         fm = {
             'T': ('outTemp', 2), # degree_C
             'H': ('outHumidity', 1), # percent
-            'P': ('pressure', 3), # mbar
-            'SLP': ('barometer', 3), # mbar
+            'P': ('barometer', 3), # mbar
+            'UGP': ('pressure', 3), # mbar
             'W': ('windSpeed', 2), # km/h
             'G': ('windGust', 2), # km/h
             'B': ('windDir', 0), # degree_compass
