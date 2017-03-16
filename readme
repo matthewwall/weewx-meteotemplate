@@ -38,3 +38,9 @@ be something like this:
 
 The password is the upload password, not the password used to administrate
 the meteotemplate installation.
+
+The default configuration will send data every archive interval.  To send
+data on each LOOP packet, change the binding:
+
+    [[Meteotemplate]]
+        binding = loop
