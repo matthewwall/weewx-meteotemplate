@@ -1,3 +1,6 @@
+0.9 31mar2017
+* remove superluous upload notification
+
 0.8 11mar2017
 * deal with api change to pressure/barometer
 

@@ -65,7 +65,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay, list_as_string
 
-VERSION = "0.8"
+VERSION = "0.9"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -172,7 +172,6 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         txt = response.read()
         if txt != 'Success':
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
-        logdbg("upload complete: %s" % txt)
 
     def get_url(self, record):
         record = weewx.units.to_std_system(record, weewx.METRIC)
