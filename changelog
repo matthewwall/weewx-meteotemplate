@@ -1,3 +1,6 @@
+0.10 08mar2020
+* Ported to Python 3 and WeeWX V4. -tk
+
 0.9 31mar2017
 * remove superluous upload notification
 

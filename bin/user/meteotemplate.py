@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2016-2017 Matthew Wall
+# Copyright 2016-2020 Matthew Wall
 # Licensed under the terms of the GPLv3
 
 """
@@ -52,37 +52,65 @@ schema.  Battery voltages are not included (the meteotemplate API has no
 provision for battery voltage).
 """
 
-import Queue
-from distutils.version import StrictVersion
+try:
+    # Python 3
+    import queue
+except ImportError:
+    # Python 2
+    import Queue as queue
 import sys
-import syslog
 import time
-import urllib
-import urllib2
+from distutils.version import StrictVersion
+
+try:
+    # Python 3
+    from urllib.parse import urlencode
+except ImportError:
+    # Python 2
+    from urllib import urlencode
 
 import weewx
 import weewx.restx
 import weewx.units
-from weeutil.weeutil import to_bool, accumulateLeaves, startOfDay, list_as_string
+from weeutil.weeutil import to_bool, list_as_string
 
-VERSION = "0.9"
+VERSION = "0.10"
 
 REQUIRED_WEEWX = "3.5.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
 
-def logmsg(level, msg):
-    syslog.syslog(level, 'restx: Meteotemplate: %s' % msg)
+try:
+    # Test for new-style weewx logging by trying to import weeutil.logger
+    import weeutil.logger
+    import logging
+    log = logging.getLogger(__name__)
 
-def logdbg(msg):
-    logmsg(syslog.LOG_DEBUG, msg)
+    def logdbg(msg):
+        log.debug(msg)
 
-def loginf(msg):
-    logmsg(syslog.LOG_INFO, msg)
+    def loginf(msg):
+        log.info(msg)
 
-def logerr(msg):
-    logmsg(syslog.LOG_ERR, msg)
+    def logerr(msg):
+        log.error(msg)
+
+except ImportError:
+    # Old-style weewx logging
+    import syslog
+
+    def logmsg(level, msg):
+        syslog.syslog(level, 'meteotemplate: %s' % msg)
+
+    def logdbg(msg):
+        logmsg(syslog.LOG_DEBUG, msg)
+
+    def loginf(msg):
+        logmsg(syslog.LOG_INFO, msg)
+
+    def logerr(msg):
+        logmsg(syslog.LOG_ERR, msg)
 
 
 class Meteotemplate(weewx.restx.StdRESTbase):
@@ -97,39 +125,27 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
         server_url: full URL to the meteotemplate ingest script
         """
-        super(Meteotemplate, self).__init__(engine, cfg_dict)        
+        super(Meteotemplate, self).__init__(engine, cfg_dict)
         loginf("service version is %s" % VERSION)
-        try:
-            site_dict = cfg_dict['StdRESTful']['Meteotemplate']
-            site_dict = accumulateLeaves(site_dict, max_level=1)
-            site_dict['password']
-        except KeyError, e:
-            logerr("Data will not be uploaded: Missing option %s" % e)
+
+        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Meteotemplate', 'password')
+        if site_dict is None:
             return
 
-        site_dict.get('server_url', Meteotemplate.DEFAULT_URL)
-        binding = list_as_string(site_dict.pop('binding', 'archive').lower())
+        binding = list_as_string(site_dict.pop('binding', 'archive')).lower()
 
         try:
-            _mgr_dict = weewx.manager.get_manager_dict_from_config(
-                cfg_dict, 'wx_binding')
-            site_dict['manager_dict'] = _mgr_dict
+            site_dict['manager_dict'] = weewx.manager.get_manager_dict_from_config(cfg_dict, 'wx_binding')
         except weewx.UnknownBinding:
             pass
 
-        self._queue = Queue.Queue()
-        try:
-            self._thread = MeteotemplateThread(self._queue, **site_dict)
-        except weewx.ViolatedPrecondition, e:
-            loginf("Data will not be posted: %s" % e)
-            return
-
+        self._queue = queue.Queue()
+        self._thread = MeteotemplateThread(self._queue, **site_dict)
         self._thread.start()
         if 'loop' in binding:
             self.bind(weewx.NEW_LOOP_PACKET, self.handle_new_loop)
         if 'archive' in binding:
             self.bind(weewx.NEW_ARCHIVE_RECORD, self.handle_new_archive)
-        loginf("Data will be uploaded to %s" % site_dict['server_url'])
 
     def handle_new_loop(self, event):
         self._queue.put(event.packet)
@@ -140,13 +156,13 @@ class Meteotemplate(weewx.restx.StdRESTbase):
 
 class MeteotemplateThread(weewx.restx.RESTThread):
 
-    def __init__(self, queue, password, server_url, skip_upload=False,
+    def __init__(self, q, password, server_url=Meteotemplate.DEFAULT_URL, skip_upload=False,
                  manager_dict=None,
-                 post_interval=None, max_backlog=sys.maxint, stale=None,
+                 post_interval=None, max_backlog=sys.maxsize, stale=None,
                  log_success=True, log_failure=True,
                  timeout=60, max_tries=3, retry_wait=5):
         super(MeteotemplateThread, self).__init__(
-            queue, protocol_name='Meteotemplate', manager_dict=manager_dict,
+            q, protocol_name='Meteotemplate', manager_dict=manager_dict,
             post_interval=post_interval, max_backlog=max_backlog, stale=stale,
             log_success=log_success, log_failure=log_failure,
             max_tries=max_tries, timeout=timeout, retry_wait=retry_wait)
@@ -155,25 +171,14 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
         self.field_map = self.create_default_field_map()
         # FIXME: make field map changes available via config file
-
-    def process_record(self, record, dbm):
-        if dbm:
-            record = self.get_record(record, dbm)
-        url = self.get_url(record)
-        if weewx.debug >= 2:
-            logdbg('url: %s' % url)
-        if self.skip_upload:
-            raise weewx.restx.AbortedPost()
-        req = urllib2.Request(url)
-        req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
-        self.post_with_retries(req)
+        loginf("Data will be uploaded to %s" % self.server_url)
 
     def check_response(self, response):
-        txt = response.read()
+        txt = response.read().decode()
         if txt != 'Success':
             raise weewx.restx.FailedPost("Server returned '%s'" % txt)
 
-    def get_url(self, record):
+    def format_url(self, record):
         record = weewx.units.to_std_system(record, weewx.METRIC)
         if 'dayRain' in record and record['dayRain'] is not None:
             record['dayRain'] *= 10.0 # convert to mm
@@ -185,10 +190,10 @@ class MeteotemplateThread(weewx.restx.RESTThread):
         parts['SW'] = "weewx-%s" % weewx.__version__
         for k in self.field_map:
             if (self.field_map[k][0] in record and
-                record[self.field_map[k][0]] is not None):
+                    record[self.field_map[k][0]] is not None):
                 parts[k] = self._fmt(record.get(self.field_map[k][0]),
                                      self.field_map[k][1])
-        return "%s?%s" % (self.server_url, urllib.urlencode(parts))
+        return "%s?%s" % (self.server_url, urlencode(parts))
 
     @staticmethod
     def _fmt(x, places=3):
@@ -249,10 +254,18 @@ class MeteotemplateThread(weewx.restx.RESTThread):
 if __name__ == "__main__":
     import optparse
 
+    weewx.debug = 2
+
+    try:
+        # WeeWX V4 logging
+        weeutil.logger.setup('meteotemplate', {})
+    except NameError:
+        # WeeWX V3 logging
+        syslog.openlog('meteotemplate', syslog.LOG_PID | syslog.LOG_CONS)
+        syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_DEBUG))
+
     usage = """%prog [--url URL] [--pw password] [--version] [--help]"""
 
-    syslog.openlog('meteotemplate', syslog.LOG_PID | syslog.LOG_CONS)
-    syslog.setlogmask(syslog.LOG_UPTO(syslog.LOG_DEBUG))
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--version', dest='version', action='store_true',
                       help='display driver version')
@@ -262,16 +275,17 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     if options.version:
-        print "meteotemplate uploader version %s" % VERSION
+        print("meteotemplate uploader version %s" % VERSION)
         exit(0)
 
-    print "uploading to %s" % options.url
-    weewx.debug = 2
-    queue = Queue.Queue()
-    t = MeteotemplateThread(
-        queue, manager_dict=None, password=options.pw, server_url=options.url)
-    t.process_record({'dateTime': int(time.time() + 0.5),
-                      'usUnits': weewx.US,
-                      'outTemp': 32.5,
-                      'inTemp': 75.8,
-                      'outHumidity': 24}, None)
+    print("uploading to %s" % options.url)
+    q = queue.Queue()
+    t = MeteotemplateThread(q, manager_dict=None, password=options.pw, server_url=options.url)
+    t.start()
+    q.put({'dateTime': int(time.time() + 0.5),
+           'usUnits': weewx.US,
+           'outTemp': 32.5,
+           'inTemp': 75.8,
+           'outHumidity': 24})
+    q.put(None)
+    t.join(20)
