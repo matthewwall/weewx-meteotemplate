@@ -2,7 +2,7 @@
 # Copyright 2016-2020 Matthew Wall
 # Distributed under terms of the GPLv3
 
-from setup import ExtensionInstaller
+from weecfg.extension import ExtensionInstaller
 
 def loader():
     return MeteotemplateInstaller()
